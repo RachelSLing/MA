@@ -1,0 +1,94 @@
+---
+title: "hw1"
+author: "Rachel Ling"
+date: "2/9/2022"
+output: html_document
+---
+---
+title: "Assignment 1(local)”
+author: "Rachel Ling"
+date: "2/1/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+install.packages("knitr")
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, ggplot2, dplyr, lubridate, stringr, readxl, data.table, gdata)
+
+contract.service.area <- readRDS("/Users/rachelling/Downloads/contract_service_area-2.rds")
+ffs.costs <-readRDS("/Users/rachelling/Downloads/ffs_costs.rds")
+final.ma.data <- readRDS("/Users/rachelling/Downloads/final_ma_data.rds")
+ma.benchmark <- readRDS("/Users/rachelling/Downloads/ma_benchmark.rds")
+ma.penetration <- readRDS("/Users/rachelling/Downloads/ma_penetration.rds")
+plan.premiums <- readRDS("/Users/rachelling/Downloads/plan_premiums.rds")
+risk.rebate <- readRDS("/Users/rachelling/Downloads/risk_rebate.rds")
+star.ratings <- readRDS("/Users/rachelling/Downloads/star_ratings.rds")
+full.ma.data <-readRDS("/Users/rachelling/Downloads/full_ma_data.rds")
+```
+
+##Enrollment Data
+# 1.How many observations are in your current dataset?
+There are 19126783 observations in my dataset.
+# 2. How many different plan_types are there?
+```{r}
+
+df <- full.ma.data %>% ungroup
+df %>%
+    filter(!is.na(plan_type)) %>%
+    distinct(plan_type)
+```
+There are 26 different plan types. 
+# 3. Provide a table of the count of plans under each plan type in each year.
+```{r}
+myplan_count <- full.ma.data %>%
+  group_by(year, plan_type) %>%
+  select(year, plan_type) %>%
+  summarize(plan_count=n())
+
+(table_planyear <- pivot_wider(myplan_count, 
+                               names_from = year, 
+                               values_from = plan_count))
+knitr::kable(full.ma.data, col.names=c("","2007","2008","2009","2010","2011","2012","2013","2014","2015"),
+             type="html", caption = "Plan Count by Year", booktabs = TRUE)
+```
+## 4. Remove all special needs plans (SNP), employer group plans (eghp), and all “800-series” plans.
+```{r}
+myplan_counts_update <- full.ma.data %>% 
+  filter(snp =="No" & eghp == "No") %>%
+  filter(planid <800 | planid >= 900) %>%
+  filter(!is.na(planid)) %>%
+  group_by(year, plan_type) %>%
+  select(year, plan_type) %>%
+  summarize(plan_count=n())
+
+(table_planyear1 <- pivot_wider(myplan_counts_update, 
+                               names_from = year, 
+                               values_from = plan_count))
+knitr::kable(full.ma.data, col.names=c("","2007","2008","2009","2010","2011","2012","2013","2014","2015"),
+             type="html", caption = "Plan Count by Year", booktabs = TRUE)
+
+```
+# 5. Merge the contract service area data to the enrollment data, and restrict the data only to contracts that are approved in their respective counties.
+```{r}
+final.data <- full.ma.data %>%
+  inner_join(contract.service.area %>% 
+               select(contractid, fips, year), 
+             by=c("contractid", "fips", "year")) %>%
+  filter(!state %in% c("VI","PR","MP","GU","AS","") &
+           snp == "No" &
+           (planid < 800 | planid >= 900) &
+           !is.na(planid) & !is.na(fips))
+```
+# 6. Finally, limit your dataset only to plans with non-missing enrollment data. Provide a graph showing the average number of Medicare Advantage enrollees per county from 2008 to 2015. 
+```{r}
+
+```
+
+## 
+## Summary Questions
+#Why did we drop the "800-series" plans?
+The beneficiary doesn't actually hold the contract with CMS in 800-series plans. 
+#Why do so many plans charge a $0 premium? What does that really mean to a beneficiary? 
+The beneficiary still has out of pocket costs they must pay such as coinsurance/copayments, deductibles, etc. 
